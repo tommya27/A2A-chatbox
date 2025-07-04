@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A2A智能聊天助手</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/bash.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-comments"></i> 聊天记录</h2>
+                <button class="new-chat-btn" onclick="createNewChat()">
+                    <i class="fas fa-plus"></i> 新建聊天
+                </button>
+            </div>
+            <div class="contacts-list" id="contactsList">
+                <!-- 联系人列表将在这里动态生成 -->
+            </div>
+        </div>
+
+        <!-- 主聊天区域 -->
+        <div class="chat-container">
+            <!-- 聊天头部 -->
+            <div class="chat-header">
+                <div class="chat-info">
+                    <button class="sidebar-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="chat-details">
+                        <h3 id="currentChatTitle">AI助手</h3>
+                        <span class="status" id="chatStatus">在线</span>
+                    </div>
+                </div>
+                <div class="chat-actions">
+                    <button class="action-btn" onclick="clearCurrentChat()" title="清空当前聊天">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="action-btn" onclick="exportChat()" title="导出聊天记录">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="action-btn" onclick="toggleSettings()" title="设置">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 消息显示区域 -->
+            <div class="messages-container" id="messagesContainer">
+                <div class="welcome-message">
+                    <div class="welcome-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h2>欢迎使用A2A智能聊天助手</h2>
+                    <p>选择一个AI助手开始对话，或者直接输入您的问题</p>
+                    <div class="quick-actions">
+                        <button class="quick-btn" onclick="showAssistantSelector()">
+                            <i class="fas fa-user-tie"></i> 选择助手
+                        </button>
+                        <button class="quick-btn" onclick="toggleSettings()">
+                            <i class="fas fa-cog"></i> 配置API
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入指示器 -->
+            <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <span>AI正在思考...</span>
+            </div>
+
+            <!-- 模型选择器 -->
+            <div class="model-selector" id="modelSelector">
+                <select id="modelSelect" onchange="changeModel()">
+                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    <option value="gpt-4">GPT-4</option>
+                    <option value="deepseek-chat">DeepSeek Chat</option>
+                    <option value="deepseek-coder">DeepSeek Coder</option>
+                    <option value="claude-3-sonnet">Claude-3 Sonnet</option>
+                    <option value="claude-3-haiku">Claude-3 Haiku</option>
+                </select>
+                <span class="model-info" id="modelInfo">GPT-3.5 Turbo</span>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <button class="attach-btn" onclick="triggerFileUpload()" title="上传文件">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <input type="file" id="fileInput" style="display: none;" multiple accept=".txt,.md,.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif" onchange="handleFileUpload(event)">
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="输入您的消息..." 
+                        rows="1"
+                        onkeydown="handleKeyDown(event)"
+                        oninput="adjustTextareaHeight(this)"
+                    ></textarea>
+                    <button class="emoji-btn" onclick="toggleEmojiPicker()" title="表情">
+                        <i class="fas fa-smile"></i>
+                    </button>
+                    <button class="send-btn" onclick="sendMessage()" title="发送消息">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="file-preview" id="filePreview" style="display: none;"></div>
+                <div class="emoji-picker" id="emojiPicker" style="display: none;">
+                    <div class="emoji-grid">
+                        <span onclick="insertEmoji('😀')">😀</span>
+                        <span onclick="insertEmoji('😃')">😃</span>
+                        <span onclick="insertEmoji('😄')">😄</span>
+                        <span onclick="insertEmoji('😁')">😁</span>
+                        <span onclick="insertEmoji('😆')">😆</span>
+                        <span onclick="insertEmoji('😅')">😅</span>
+                        <span onclick="insertEmoji('😂')">😂</span>
+                        <span onclick="insertEmoji('🤣')">🤣</span>
+                        <span onclick="insertEmoji('😊')">😊</span>
+                        <span onclick="insertEmoji('😇')">😇</span>
+                        <span onclick="insertEmoji('🙂')">🙂</span>
+                        <span onclick="insertEmoji('🙃')">🙃</span>
+                        <span onclick="insertEmoji('😉')">😉</span>
+                        <span onclick="insertEmoji('😌')">😌</span>
+                        <span onclick="insertEmoji('😍')">😍</span>
+                        <span onclick="insertEmoji('🥰')">🥰</span>
+                        <span onclick="insertEmoji('😘')">😘</span>
+                        <span onclick="insertEmoji('😗')">😗</span>
+                        <span onclick="insertEmoji('😙')">😙</span>
+                        <span onclick="insertEmoji('😚')">😚</span>
+                        <span onclick="insertEmoji('😋')">😋</span>
+                        <span onclick="insertEmoji('😛')">😛</span>
+                        <span onclick="insertEmoji('😝')">😝</span>
+                        <span onclick="insertEmoji('😜')">😜</span>
+                        <span onclick="insertEmoji('🤪')">🤪</span>
+                        <span onclick="insertEmoji('🤨')">🤨</span>
+                        <span onclick="insertEmoji('🧐')">🧐</span>
+                        <span onclick="insertEmoji('🤓')">🤓</span>
+                        <span onclick="insertEmoji('😎')">😎</span>
+                        <span onclick="insertEmoji('🤩')">🤩</span>
+                        <span onclick="insertEmoji('🥳')">🥳</span>
+                        <span onclick="insertEmoji('😏')">😏</span>
+                        <span onclick="insertEmoji('😒')">😒</span>
+                        <span onclick="insertEmoji('😞')">😞</span>
+                        <span onclick="insertEmoji('😔')">😔</span>
+                        <span onclick="insertEmoji('😟')">😟</span>
+                        <span onclick="insertEmoji('😕')">😕</span>
+                        <span onclick="insertEmoji('🙁')">🙁</span>
+                        <span onclick="insertEmoji('☹️')">☹️</span>
+                        <span onclick="insertEmoji('😣')">😣</span>
+                        <span onclick="insertEmoji('😖')">😖</span>
+                        <span onclick="insertEmoji('😫')">😫</span>
+                        <span onclick="insertEmoji('😩')">😩</span>
+                        <span onclick="insertEmoji('🥺')">🥺</span>
+                        <span onclick="insertEmoji('😢')">😢</span>
+                        <span onclick="insertEmoji('😭')">😭</span>
+                        <span onclick="insertEmoji('😤')">😤</span>
+                        <span onclick="insertEmoji('😠')">😠</span>
+                        <span onclick="insertEmoji('😡')">😡</span>
+                        <span onclick="insertEmoji('🤬')">🤬</span>
+                        <span onclick="insertEmoji('🤯')">🤯</span>
+                        <span onclick="insertEmoji('😳')">😳</span>
+                        <span onclick="insertEmoji('🥵')">🥵</span>
+                        <span onclick="insertEmoji('🥶')">🥶</span>
+                        <span onclick="insertEmoji('😱')">😱</span>
+                        <span onclick="insertEmoji('😨')">😨</span>
+                        <span onclick="insertEmoji('😰')">😰</span>
+                        <span onclick="insertEmoji('😥')">😥</span>
+                        <span onclick="insertEmoji('😓')">😓</span>
+                        <span onclick="insertEmoji('🤗')">🤗</span>
+                        <span onclick="insertEmoji('🤔')">🤔</span>
+                        <span onclick="insertEmoji('🤭')">🤭</span>
+                        <span onclick="insertEmoji('🤫')">🤫</span>
+                        <span onclick="insertEmoji('🤥')">🤥</span>
+                        <span onclick="insertEmoji('😶')">😶</span>
+                        <span onclick="insertEmoji('😐')">😐</span>
+                        <span onclick="insertEmoji('😑')">😑</span>
+                        <span onclick="insertEmoji('😬')">😬</span>
+                        <span onclick="insertEmoji('🙄')">🙄</span>
+                        <span onclick="insertEmoji('😯')">😯</span>
+                        <span onclick="insertEmoji('😦')">😦</span>
+                        <span onclick="insertEmoji('😧')">😧</span>
+                        <span onclick="insertEmoji('😮')">😮</span>
+                        <span onclick="insertEmoji('😲')">😲</span>
+                        <span onclick="insertEmoji('🥱')">🥱</span>
+                        <span onclick="insertEmoji('😴')">😴</span>
+                        <span onclick="insertEmoji('🤤')">🤤</span>
+                        <span onclick="insertEmoji('😪')">😪</span>
+                        <span onclick="insertEmoji('😵')">😵</span>
+                        <span onclick="insertEmoji('🤐')">🤐</span>
+                        <span onclick="insertEmoji('🥴')">🥴</span>
+                        <span onclick="insertEmoji('🤢')">🤢</span>
+                        <span onclick="insertEmoji('🤮')">🤮</span>
+                        <span onclick="insertEmoji('🤧')">🤧</span>
+                        <span onclick="insertEmoji('😷')">😷</span>
+                        <span onclick="insertEmoji('🤒')">🤒</span>
+                        <span onclick="insertEmoji('🤕')">🤕</span>
+                        <span onclick="insertEmoji('🤑')">🤑</span>
+                        <span onclick="insertEmoji('🤠')">🤠</span>
+                        <span onclick="insertEmoji('😈')">😈</span>
+                        <span onclick="insertEmoji('👿')">👿</span>
+                        <span onclick="insertEmoji('👹')">👹</span>
+                        <span onclick="insertEmoji('👺')">👺</span>
+                        <span onclick="insertEmoji('🤡')">🤡</span>
+                        <span onclick="insertEmoji('💩')">💩</span>
+                        <span onclick="insertEmoji('👻')">👻</span>
+                        <span onclick="insertEmoji('💀')">💀</span>
+                        <span onclick="insertEmoji('☠️')">☠️</span>
+                        <span onclick="insertEmoji('👽')">👽</span>
+                        <span onclick="insertEmoji('👾')">👾</span>
+                        <span onclick="insertEmoji('🤖')">🤖</span>
+                        <span onclick="insertEmoji('🎃')">🎃</span>
+                        <span onclick="insertEmoji('😺')">😺</span>
+                        <span onclick="insertEmoji('😸')">😸</span>
+                        <span onclick="insertEmoji('😹')">😹</span>
+                        <span onclick="insertEmoji('😻')">😻</span>
+                        <span onclick="insertEmoji('😼')">😼</span>
+                        <span onclick="insertEmoji('😽')">😽</span>
+                        <span onclick="insertEmoji('🙀')">🙀</span>
+                        <span onclick="insertEmoji('😿')">😿</span>
+                        <span onclick="insertEmoji('😾')">😾</span>
+                        <span onclick="insertEmoji('👋')">👋</span>
+                        <span onclick="insertEmoji('🤚')">🤚</span>
+                        <span onclick="insertEmoji('🖐️')">🖐️</span>
+                        <span onclick="insertEmoji('✋')">✋</span>
+                        <span onclick="insertEmoji('🖖')">🖖</span>
+                        <span onclick="insertEmoji('👌')">👌</span>
+                        <span onclick="insertEmoji('🤏')">🤏</span>
+                        <span onclick="insertEmoji('✌️')">✌️</span>
+                        <span onclick="insertEmoji('🤞')">🤞</span>
+                        <span onclick="insertEmoji('🤟')">🤟</span>
+                        <span onclick="insertEmoji('🤘')">🤘</span>
+                        <span onclick="insertEmoji('🤙')">🤙</span>
+                        <span onclick="insertEmoji('👈')">👈</span>
+                        <span onclick="insertEmoji('👉')">👉</span>
+                        <span onclick="insertEmoji('👆')">👆</span>
+                        <span onclick="insertEmoji('🖕')">🖕</span>
+                        <span onclick="insertEmoji('👇')">👇</span>
+                        <span onclick="insertEmoji('☝️')">☝️</span>
+                        <span onclick="insertEmoji('👍')">👍</span>
+                        <span onclick="insertEmoji('👎')">👎</span>
+                        <span onclick="insertEmoji('✊')">✊</span>
+                        <span onclick="insertEmoji('👊')">👊</span>
+                        <span onclick="insertEmoji('🤛')">🤛</span>
+                        <span onclick="insertEmoji('🤜')">🤜</span>
+                        <span onclick="insertEmoji('👏')">👏</span>
+                        <span onclick="insertEmoji('🙌')">🙌</span>
+                        <span onclick="insertEmoji('👐')">👐</span>
+                        <span onclick="insertEmoji('🤲')">🤲</span>
+                        <span onclick="insertEmoji('🤝')">🤝</span>
+                        <span onclick="insertEmoji('🙏')">🙏</span>
+                        <span onclick="insertEmoji('✍️')">✍️</span>
+                        <span onclick="insertEmoji('💅')">💅</span>
+                        <span onclick="insertEmoji('🤳')">🤳</span>
+                        <span onclick="insertEmoji('💪')">💪</span>
+                        <span onclick="insertEmoji('🦾')">🦾</span>
+                        <span onclick="insertEmoji('🦿')">🦿</span>
+                        <span onclick="insertEmoji('🦵')">🦵</span>
+                        <span onclick="insertEmoji('🦶')">🦶</span>
+                        <span onclick="insertEmoji('👂')">👂</span>
+                        <span onclick="insertEmoji('🦻')">🦻</span>
+                        <span onclick="insertEmoji('👃')">👃</span>
+                        <span onclick="insertEmoji('🧠')">🧠</span>
+                        <span onclick="insertEmoji('🦷')">🦷</span>
+                        <span onclick="insertEmoji('🦴')">🦴</span>
+                        <span onclick="insertEmoji('👀')">👀</span>
+                        <span onclick="insertEmoji('👁️')">👁️</span>
+                        <span onclick="insertEmoji('👅')">👅</span>
+                        <span onclick="insertEmoji('👄')">👄</span>
+                        <span onclick="insertEmoji('💋')">💋</span>
+                        <span onclick="insertEmoji('🩸')">🩸</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 智能助手选择器 -->
+        <div class="assistant-selector" id="assistantSelector" style="display: none;">
+            <div class="assistant-modal">
+                <div class="modal-header">
+                    <h3><i class="fas fa-user-tie"></i> 选择智能助手</h3>
+                    <button class="close-btn" onclick="hideAssistantSelector()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="assistants-grid">
+                    <div class="assistant-card" onclick="selectAssistant('general')">
+                        <div class="assistant-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h4>通用助手</h4>
+                        <p>全能AI助手，可以回答各种问题</p>
+                    </div>
+                    <div class="assistant-card" onclick="selectAssistant('programmer')">
+                        <div class="assistant-icon">
+                            <i class="fas fa-code"></i>
+                        </div>
+                        <h4>编程助手</h4>
+                        <p>专业的编程和技术问题解答</p>
+                    </div>
+                    <div class="assistant-card" onclick="selectAssistant('writer')">
+                        <div class="assistant-icon">
+                            <i class="fas fa-pen-fancy"></i>
+                        </div>
+                        <h4>写作助手</h4>
+                        <p>帮助您创作文章、故事和文案</p>
+                    </div>
+                    <div class="assistant-card" onclick="selectAssistant('translator')">
+                        <div class="assistant-icon">
+                            <i class="fas fa-language"></i>
+                        </div>
+                        <h4>翻译助手</h4>
+                        <p>专业的多语言翻译服务</p>
+                    </div>
+                    <div class="assistant-card" onclick="selectAssistant('business')">
+                        <div class="assistant-icon">
+                            <i class="fas fa-briefcase"></i>
+                        </div>
+                        <h4>商务助手</h4>
+                        <p>商业分析、策划和咨询</p>
+                    </div>
+                    <div class="assistant-card" onclick="selectAssistant('creative')">
+                        <div class="assistant-icon">
+                            <i class="fas fa-palette"></i>
+                        </div>
+                        <h4>创意助手</h4>
+                        <p>创意设计和艺术灵感</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置面板 -->
+        <div class="settings-panel" id="settingsPanel" style="display: none;">
+            <div class="settings-modal">
+                <div class="modal-header">
+                    <h3><i class="fas fa-cog"></i> 设置</h3>
+                    <button class="close-btn" onclick="toggleSettings()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="settings-content">
+                    <div class="settings-tabs">
+                        <button class="tab-btn active" onclick="showSettingsTab('api')">API配置</button>
+                        <button class="tab-btn" onclick="showSettingsTab('general')">通用设置</button>
+                        <button class="tab-btn" onclick="showSettingsTab('about')">关于</button>
+                    </div>
+                    
+                    <div class="settings-tab-content" id="apiSettings">
+                        <h4>API配置</h4>
+                        <div class="setting-group">
+                            <label for="apiProvider">API提供商:</label>
+                            <select id="apiProvider" onchange="changeApiProvider()">
+                                <option value="openai">OpenAI</option>
+                                <option value="deepseek">DeepSeek</option>
+                                <option value="claude">Claude (Anthropic)</option>
+                                <option value="custom">自定义</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label for="apiKey">API Key:</label>
+                            <input type="password" id="apiKey" placeholder="输入您的API Key">
+                        </div>
+                        <div class="setting-group">
+                            <label for="apiBaseUrl">Base URL:</label>
+                            <input type="text" id="apiBaseUrl" placeholder="API基础URL">
+                        </div>
+                        <div class="setting-group">
+                            <button class="test-btn" onclick="testApiConnection()">测试连接</button>
+                            <button class="save-btn" onclick="saveApiSettings()">保存设置</button>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-tab-content" id="generalSettings" style="display: none;">
+                        <h4>通用设置</h4>
+                        <div class="setting-group">
+                            <label for="theme">主题:</label>
+                            <select id="theme" onchange="changeTheme()">
+                                <option value="auto">跟随系统</option>
+                                <option value="light">浅色模式</option>
+                                <option value="dark">深色模式</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label for="language">语言:</label>
+                            <select id="language" onchange="changeLanguage()">
+                                <option value="zh-CN">简体中文</option>
+                                <option value="en-US">English</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label for="fontSize">字体大小:</label>
+                            <select id="fontSize" onchange="changeFontSize()">
+                                <option value="small">小</option>
+                                <option value="medium">中</option>
+                                <option value="large">大</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label>
+                                <input type="checkbox" id="autoSave" onchange="toggleAutoSave()"> 自动保存聊天记录
+                            </label>
+                        </div>
+                        <div class="setting-group">
+                            <label>
+                                <input type="checkbox" id="soundEnabled" onchange="toggleSound()"> 启用提示音
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-tab-content" id="aboutSettings" style="display: none;">
+                        <h4>关于A2A智能聊天助手</h4>
+                        <div class="about-info">
+                            <div class="app-logo">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <h3>A2A智能聊天助手</h3>
+                            <p class="version">版本 1.0.0</p>
+                            <p class="description">
+                                A2A (Anyone to AI) 是一个现代化、易用的Web聊天界面，
+                                支持多种主流AI模型。让每个人都能轻松使用AI的力量。
+                            </p>
+                            <div class="features-list">
+                                <h5>主要特性:</h5>
+                                <ul>
+                                    <li>支持多种AI模型 (GPT、DeepSeek、Claude等)</li>
+                                    <li>智能助手角色选择</li>
+                                    <li>现代化响应式界面</li>
+                                    <li>本地数据存储</li>
+                                    <li>文件上传支持</li>
+                                    <li>多主题支持</li>
+                                </ul>
+                            </div>
+                            <div class="links">
+                                <a href="https://github.com/tommya27/A2A-chatbox" target="_blank">
+                                    <i class="fab fa-github"></i> GitHub
+                                </a>
+                                <a href="mailto:3041826121@qq.com">
+                                    <i class="fas fa-envelope"></i> 联系我们
+                                </a>
+                            </div>
+                            <p class="copyright">
+                                © 2024 A2A智能聊天助手. 基于 MIT 协议开源.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
